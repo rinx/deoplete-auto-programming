@@ -25,7 +25,7 @@ class Source(Base):
             pass
 
     def _query_git(self, querystring):
-        command = ['git', 'grep', '--fixed-string', '-h', '-e', querystring]
+        command = ['git', 'grep', '--fixed-string', '-h', '-E', '(^\s*|.*\s+)%s' % querystring]
         cands = subprocess.check_output(command).splitlines()
         return cands
 
@@ -33,14 +33,16 @@ class Source(Base):
         if not self.executable_git:
             return []
 
+        querystring = context['complete_str']
         try:
             words = [
                     x.decode(context['encoding'])
-                    for x in self._query_git(context['complete_str'])
+                    for x in self._query_git(re.sub(r'^\s*', '', querystring))
                     ]
         except subprocess.CalledProcessError:
             return []
 
+        words = [x[re.search(querystring, x).start():] for x in words]
         words = [re.sub(r'^\s*', '', x) for x in words]
 
         return [{ 'word': x } for x in words]
